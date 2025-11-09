@@ -1,6 +1,6 @@
 # What is this repo
 
-These are solutions for the [boot.dev]
+Solutions for the [boot.dev](https://www.boot.dev) courses
 
 # How to use it
 
