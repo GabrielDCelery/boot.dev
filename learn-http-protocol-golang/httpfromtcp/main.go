@@ -62,7 +62,7 @@ func main() {
 		log.Fatalf("failed to create listener, reason: %v\n", err)
 	}
 
-	// fmt.Printf("started listener on %s\n", listener.Addr())
+	fmt.Printf("started listener on %s\n", listener.Addr())
 
 	defer listener.Close()
 
@@ -73,7 +73,7 @@ func main() {
 			log.Fatalf("failed to accept connection, reason: %v\n", err)
 		}
 
-		// fmt.Printf("connection has been accepted on %s\n", conn.LocalAddr())
+		fmt.Printf("connection has been accepted on %s\n", conn.LocalAddr())
 
 		linesChan := getLinesChannel(conn)
 
