@@ -23,6 +23,7 @@ func getLinesChannel(f io.ReadCloser) <-chan string {
 				log.Fatalf("failed to read chunk into buffer, reason: %v\n", err)
 			}
 
+			// NOTE: even if we encounter an EOF error according to the docs we might have successfully read bytes into the buffer so first we need to handle the lefover chunk
 			if n > 0 {
 				// NOTE: We need to do the slicing because according to the docs the rest of the buffer might be used as scratch space https://pkg.go.dev/io@go1.25.4#Reader
 				chunk := string(buffer[:n])
