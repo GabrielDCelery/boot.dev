@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strings"
 )
 
 func main() {
@@ -18,6 +19,7 @@ func main() {
 
 	defer file.Close()
 
+	currentLine := ""
 	buffer := make([]byte, 8)
 
 	for {
@@ -27,17 +29,27 @@ func main() {
 			log.Fatalf("failed to read chunk into buffer, reason: %v\n", err)
 		}
 
-		// even if we encounter an EOF error according to the docs we might have successfully read bytes into the buffer
-		// so first we need to handle the lefover chunk
+		// NOTE: even if we encounter an EOF error according to the docs we might have successfully read bytes into the buffer so first we need to handle the lefover chunk
 		if n > 0 {
-			// We need to do the slicing because according to the docs the rest of the buffer might be used as scratch space https://pkg.go.dev/io@go1.25.4#Reader
-			fmt.Printf("read: %s\n", string(buffer[:n]))
+			// NOTE: We need to do the slicing because according to the docs the rest of the buffer might be used as scratch space https://pkg.go.dev/io@go1.25.4#Reader
+			chunk := string(buffer[:n])
+			parts := strings.Split(chunk, "\n")
+
+			for i, part := range parts {
+				if i == len(parts)-1 {
+					currentLine += part
+					break
+				}
+				currentLine += part
+				fmt.Printf("read: %s\n", currentLine)
+				currentLine = ""
+			}
+
+			clear(buffer)
 		}
 
 		if err == io.EOF {
 			break
 		}
-
-		clear(buffer)
 	}
 }
