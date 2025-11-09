@@ -36,11 +36,13 @@ func main() {
 			parts := strings.Split(chunk, "\n")
 
 			for i, part := range parts {
-				if i == len(parts)-1 {
-					currentLine += part
+				currentLine += part
+
+				// if we are looking at the last part and there are still leftover bytes in the file then we continue reading from the file
+				if i == len(parts)-1 && err != io.EOF {
 					break
 				}
-				currentLine += part
+
 				fmt.Printf("read: %s\n", currentLine)
 				currentLine = ""
 			}
