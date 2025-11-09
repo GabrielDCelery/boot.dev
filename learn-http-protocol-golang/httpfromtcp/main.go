@@ -82,5 +82,7 @@ func main() {
 		}
 
 		conn.Close()
+
+		fmt.Printf("connection has been closed on %s\n", conn.LocalAddr())
 	}
 }
