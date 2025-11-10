@@ -73,16 +73,18 @@ func main() {
 			log.Fatalf("failed to accept connection, reason: %v\n", err)
 		}
 
-		fmt.Printf("connection has been accepted on %s\n", conn.LocalAddr())
+		go func(conn net.Conn) {
+			fmt.Printf("connection has been accepted on %s\n", conn.LocalAddr())
 
-		linesChan := getLinesChannel(conn)
+			linesChan := getLinesChannel(conn)
 
-		for line := range linesChan {
-			fmt.Printf("%s\n", line)
-		}
+			for line := range linesChan {
+				fmt.Printf("%s\n", line)
+			}
 
-		conn.Close()
+			conn.Close()
 
-		fmt.Printf("connection has been closed on %s\n", conn.LocalAddr())
+			fmt.Printf("connection has been closed on %s\n", conn.LocalAddr())
+		}(conn)
 	}
 }
