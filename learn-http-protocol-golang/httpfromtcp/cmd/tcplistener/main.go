@@ -49,6 +49,11 @@ func getLinesChannel(f io.ReadCloser) <-chan string {
 			}
 		}
 
+		//NOTE: need to have this for scenarios where the line ends but there is no new line and we send the EOF when we kill for example the curl process
+		if currentLine != "" {
+			ch <- currentLine
+		}
+
 		close(ch)
 	}()
 
