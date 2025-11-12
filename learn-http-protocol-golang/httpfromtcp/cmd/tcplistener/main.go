@@ -29,7 +29,7 @@ func getLinesChannel(f io.ReadCloser) <-chan string {
 			if n > 0 {
 				// NOTE: We need to do the slicing because according to the docs the rest of the buffer might be used as scratch space https://pkg.go.dev/io@go1.25.4#Reader
 				chunk := string(buffer[:n])
-				parts := strings.Split(chunk, "\n")
+				parts := strings.Split(chunk, "\r\n")
 
 				for i, part := range parts {
 					currentLine += part
