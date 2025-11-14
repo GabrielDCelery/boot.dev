@@ -32,17 +32,17 @@ require.Error(t, err)
 ```
 
 - [] Implement the RequestFromReader function to parse the request-line from the reader. Here are some things to keep in mind:
-  - [] For now, you can slurp the entire request into memory using io.ReadAll and work with the entire thing as a string.
-  - [] Create a parseRequestLine function to do the parsing.
-  - [] Remember that newlines in HTTP are \r\n, not just \n.
-  - [] You can discard everything that comes after the request-line for now.
-  - [] There are always just 3 parts to the request line: strings.Split is your friend here.
-  - [] Verify that the "method" part only contains capital alphabetic characters.
-  - [] Verify that the http version part is 1.1, extracted from the literal HTTP/1.1 format, as we only support HTTP/1.1 for now.
-  - [] Here are some additional references that might help (but don't overthink it, this step should be pretty straightforward):
-    - [] 2.3
-    - [] 3.1
-    - [] 3.2
+  - [x] For now, you can slurp the entire request into memory using io.ReadAll and work with the entire thing as a string.
+  - [x] Create a parseRequestLine function to do the parsing.
+  - [x] Remember that newlines in HTTP are \r\n, not just \n.
+  - [x] You can discard everything that comes after the request-line for now.
+  - [x] There are always just 3 parts to the request line: strings.Split is your friend here.
+  - [x] Verify that the "method" part only contains capital alphabetic characters.
+  - [x] Verify that the http version part is 1.1, extracted from the literal HTTP/1.1 format, as we only support HTTP/1.1 for now.
+  - [x] Here are some additional references that might help (but don't overthink it, this step should be pretty straightforward):
+    - [] [2.3](https://datatracker.ietf.org/doc/html/rfc9112#section-2.3)
+    - [] [3.1](https://datatracker.ietf.org/doc/html/rfc9112#name-method)
+    - [] [3.2](https://datatracker.ietf.org/doc/html/rfc9112#name-request-target)
 - [] Add more test cases to request_test.go to cover any edge cases you can think of. Here are the names of all the tests I wrote:
   - [] Good Request line
   - [] Good Request line with path
