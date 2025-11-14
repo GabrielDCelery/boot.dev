@@ -53,7 +53,7 @@ require.Error(t, err)
 
 [CH4 - L3](https://www.boot.dev/lessons/daf467c5-f17b-4382-a74c-e4bc68f2fc8d)
 
-- [] Paste this code into your request_test.go file:
+- [x] Paste this code into your request_test.go file:
 
 ```go
 type chunkReader struct {
@@ -79,7 +79,7 @@ func (cr *chunkReader) Read(p []byte) (n int, err error) {
 }
 ```
 
-- [] Update your test suite to use the chunkReader type and test for different numbers of bytes read per chunk:
+- [x] Update your test suite to use the chunkReader type and test for different numbers of bytes read per chunk:
 
 ```go
 // Test: Good GET Request line
@@ -117,4 +117,4 @@ assert.Equal(t, "1.1", r.RequestLine.HttpVersion)
 - [] Implement a new func (r \*Request) parse(data []byte) (int, error) method.
   - [] It accepts the next slice of bytes that needs to be parsed into the Request struct
   - [] It updates the "state" of the parser, and the parsed RequestLine field.
-  - []It returns the number of bytes it consumed (meaning successfully parsed) and an error if it encountered one.
+  - [] It returns the number of bytes it consumed (meaning successfully parsed) and an error if it encountered one.
