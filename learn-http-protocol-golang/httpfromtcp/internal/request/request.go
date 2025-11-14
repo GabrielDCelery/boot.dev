@@ -48,6 +48,10 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		return &Request{}, fmt.Errorf("invalid http version: %v", err)
 	}
 
+	if err = validateRequestTarget(requestTarget); err != nil {
+		return &Request{}, fmt.Errorf("invalid request target: %v", err)
+	}
+
 	requestLine := RequestLine{
 		HttpVersion:   httpVersion,
 		RequestTarget: requestTarget,
@@ -79,7 +83,7 @@ func validateRequestTarget(target string) error {
 	if target == "" {
 		return fmt.Errorf("request target can not be empty")
 	}
-	if !strings.HasPrefix(target, "/") || !strings.HasPrefix(target, "http://") || !strings.HasPrefix(target, "https://") {
+	if !strings.HasPrefix(target, "/") && !strings.HasPrefix(target, "http://") && !strings.HasPrefix(target, "https://") {
 		return fmt.Errorf("invalid request target '%s', must start with '/', 'http://' or 'https://'", target)
 	}
 	return nil
