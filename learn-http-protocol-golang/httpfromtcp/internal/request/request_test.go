@@ -34,4 +34,26 @@ func TestRequestLineParse(t *testing.T) {
 		_, err := RequestFromReader(strings.NewReader("/coffee HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n"))
 		require.Error(t, err)
 	})
+
+	t.Run("Good POST Request Line", func(t *testing.T) {
+		t.Parallel()
+		r, err := RequestFromReader(strings.NewReader("POST /coffee HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\n"))
+		require.NoError(t, err)
+		require.NotNil(t, r)
+		assert.Equal(t, "POST", r.RequestLine.Method)
+		assert.Equal(t, "HTTP/1.1", r.RequestLine.HttpVersion)
+		assert.Equal(t, "/coffee", r.RequestLine.RequestTarget)
+	})
+
+	t.Run("Invalid method (out of order) Request line", func(t *testing.T) {
+		t.Parallel()
+		_, err := RequestFromReader(strings.NewReader("/coffee GET HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n"))
+		require.Error(t, err)
+	})
+
+	t.Run("Invalid version in request line", func(t *testing.T) {
+		t.Parallel()
+		_, err := RequestFromReader(strings.NewReader("GET / HTTP/4\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n"))
+		require.Error(t, err)
+	})
 }

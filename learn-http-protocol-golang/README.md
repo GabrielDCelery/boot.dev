@@ -31,7 +31,7 @@ _, err = RequestFromReader(strings.NewReader("/coffee HTTP/1.1\r\nHost: localhos
 require.Error(t, err)
 ```
 
-- [] Implement the RequestFromReader function to parse the request-line from the reader. Here are some things to keep in mind:
+- [x] Implement the RequestFromReader function to parse the request-line from the reader. Here are some things to keep in mind:
   - [x] For now, you can slurp the entire request into memory using io.ReadAll and work with the entire thing as a string.
   - [x] Create a parseRequestLine function to do the parsing.
   - [x] Remember that newlines in HTTP are \r\n, not just \n.
@@ -40,13 +40,13 @@ require.Error(t, err)
   - [x] Verify that the "method" part only contains capital alphabetic characters.
   - [x] Verify that the http version part is 1.1, extracted from the literal HTTP/1.1 format, as we only support HTTP/1.1 for now.
   - [x] Here are some additional references that might help (but don't overthink it, this step should be pretty straightforward):
-    - [] [2.3](https://datatracker.ietf.org/doc/html/rfc9112#section-2.3)
-    - [] [3.1](https://datatracker.ietf.org/doc/html/rfc9112#name-method)
-    - [] [3.2](https://datatracker.ietf.org/doc/html/rfc9112#name-request-target)
-- [] Add more test cases to request_test.go to cover any edge cases you can think of. Here are the names of all the tests I wrote:
-  - [] Good Request line
-  - [] Good Request line with path
-  - [] Good POST Request with path
-  - [] Invalid number of parts in request line
-  - [] Invalid method (out of order) Request line
-  - [] Invalid version in Request line
+    - [x] [2.3](https://datatracker.ietf.org/doc/html/rfc9112#section-2.3)
+    - [x] [3.1](https://datatracker.ietf.org/doc/html/rfc9112#name-method)
+    - [x] [3.2](https://datatracker.ietf.org/doc/html/rfc9112#name-request-target)
+- [x] Add more test cases to request_test.go to cover any edge cases you can think of. Here are the names of all the tests I wrote:
+  - [x] Good Request line
+  - [x] Good Request line with path
+  - [x] Good POST Request with path
+  - [x] Invalid number of parts in request line
+  - [x] Invalid method (out of order) Request line
+  - [x] Invalid version in Request line
