@@ -16,7 +16,7 @@ func TestRequestLineParse(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, r)
 		assert.Equal(t, "GET", r.RequestLine.Method)
-		assert.Equal(t, "HTTP/1.1", r.RequestLine.HttpVersion)
+		assert.Equal(t, "1.1", r.RequestLine.HttpVersion)
 		assert.Equal(t, "/", r.RequestLine.RequestTarget)
 	})
 
@@ -26,7 +26,7 @@ func TestRequestLineParse(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, r)
 		assert.Equal(t, "GET", r.RequestLine.Method)
-		assert.Equal(t, "HTTP/1.1", r.RequestLine.HttpVersion)
+		assert.Equal(t, "1.1", r.RequestLine.HttpVersion)
 		assert.Equal(t, "/coffee", r.RequestLine.RequestTarget)
 	})
 
@@ -42,7 +42,7 @@ func TestRequestLineParse(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, r)
 		assert.Equal(t, "POST", r.RequestLine.Method)
-		assert.Equal(t, "HTTP/1.1", r.RequestLine.HttpVersion)
+		assert.Equal(t, "1.1", r.RequestLine.HttpVersion)
 		assert.Equal(t, "/coffee", r.RequestLine.RequestTarget)
 	})
 
@@ -66,7 +66,7 @@ func TestRequestLineParse(t *testing.T) {
 		require.NotNil(t, r)
 		assert.Equal(t, "GET", r.RequestLine.Method)
 		assert.Equal(t, "/", r.RequestLine.RequestTarget)
-		assert.Equal(t, "HTTP/1.1", r.RequestLine.HttpVersion)
+		assert.Equal(t, "1.1", r.RequestLine.HttpVersion)
 	})
 
 	t.Run("Good GET Request line with when reading chunks of 1 byte", func(t *testing.T) {
@@ -77,7 +77,7 @@ func TestRequestLineParse(t *testing.T) {
 		require.NotNil(t, r)
 		assert.Equal(t, "GET", r.RequestLine.Method)
 		assert.Equal(t, "/coffee", r.RequestLine.RequestTarget)
-		assert.Equal(t, "HTTP/1.1", r.RequestLine.HttpVersion)
+		assert.Equal(t, "1.1", r.RequestLine.HttpVersion)
 	})
 }
 

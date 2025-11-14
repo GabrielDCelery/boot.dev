@@ -36,14 +36,16 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 
 	method := requestLineParts[0]
 	requestTarget := requestLineParts[1]
-	httpVersion := requestLineParts[2]
+	httpVersionRaw := requestLineParts[2]
 
 	if err = validateMethod(method); err != nil {
 		return &Request{}, fmt.Errorf("invalid request: %v", err)
 	}
 
-	if err = validteHttpVersion(httpVersion); err != nil {
-		return &Request{}, fmt.Errorf("invalid request %v", err)
+	httpVersion, err := validteHttpVersion(httpVersionRaw)
+
+	if err != nil {
+		return &Request{}, fmt.Errorf("invalid http version: %v", err)
 	}
 
 	requestLine := RequestLine{
@@ -65,12 +67,12 @@ func validateMethod(method string) error {
 	return fmt.Errorf("invalid method, received: '%s', valid values are: %v", method, validMethods)
 }
 
-func validteHttpVersion(httpVersion string) error {
+func validteHttpVersion(httpVersion string) (string, error) {
 	validHttpVersions := []string{"HTTP/1.1"}
 	if slices.Contains(validHttpVersions, httpVersion) {
-		return nil
+		return strings.Replace(httpVersion, "HTTP/", "", 1), nil
 	}
-	return fmt.Errorf("invalid http version, received: '%s', valid values are: %v", httpVersion, validHttpVersions)
+	return "", fmt.Errorf("invalid http version, received: '%s', valid values are: %v", httpVersion, validHttpVersions)
 }
 
 func validateRequestTarget(target string) error {
