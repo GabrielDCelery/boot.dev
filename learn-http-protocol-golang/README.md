@@ -50,3 +50,71 @@ require.Error(t, err)
   - [x] Invalid number of parts in request line
   - [x] Invalid method (out of order) Request line
   - [x] Invalid version in Request line
+
+[CH4 - L3](https://www.boot.dev/lessons/daf467c5-f17b-4382-a74c-e4bc68f2fc8d)
+
+- [] Paste this code into your request_test.go file:
+
+```go
+type chunkReader struct {
+	data            string
+	numBytesPerRead int
+	pos             int
+}
+
+// Read reads up to len(p) or numBytesPerRead bytes from the string per call
+// its useful for simulating reading a variable number of bytes per chunk from a network connection
+func (cr *chunkReader) Read(p []byte) (n int, err error) {
+	if cr.pos >= len(cr.data) {
+		return 0, io.EOF
+	}
+	endIndex := cr.pos + cr.numBytesPerRead
+	if endIndex > len(cr.data) {
+		endIndex = len(cr.data)
+	}
+	n = copy(p, cr.data[cr.pos:endIndex])
+	cr.pos += n
+
+	return n, nil
+}
+```
+
+- [] Update your test suite to use the chunkReader type and test for different numbers of bytes read per chunk:
+
+```go
+// Test: Good GET Request line
+reader := &chunkReader{
+	data:            "GET / HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n",
+	numBytesPerRead: 3,
+}
+r, err := RequestFromReader(reader)
+require.NoError(t, err)
+require.NotNil(t, r)
+assert.Equal(t, "GET", r.RequestLine.Method)
+assert.Equal(t, "/", r.RequestLine.RequestTarget)
+assert.Equal(t, "1.1", r.RequestLine.HttpVersion)
+
+// Test: Good GET Request line with path
+reader = &chunkReader{
+	data:            "GET /coffee HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n",
+	numBytesPerRead: 1,
+}
+r, err = RequestFromReader(reader)
+require.NoError(t, err)
+require.NotNil(t, r)
+assert.Equal(t, "GET", r.RequestLine.Method)
+assert.Equal(t, "/coffee", r.RequestLine.RequestTarget)
+assert.Equal(t, "1.1", r.RequestLine.HttpVersion)
+```
+
+> [!WARN]
+> Be sure to test values as low as 1 and as high as the length of the request string. Our code should work under all conditions.
+
+- [] Update your parseRequestLine to return the number of bytes it consumed. If it can't find an \r\n (this is important!) it should return 0 and no error. This just means that it needs more data before it can parse the request line.
+- [] Add a new internal "enum" (I just used an int) to your Request struct to track the state of the parser. For now, you just need 2 states:
+  - "initialized"
+  - "done".
+- [] Implement a new func (r \*Request) parse(data []byte) (int, error) method.
+  - [] It accepts the next slice of bytes that needs to be parsed into the Request struct
+  - [] It updates the "state" of the parser, and the parsed RequestLine field.
+  - []It returns the number of bytes it consumed (meaning successfully parsed) and an error if it encountered one.
