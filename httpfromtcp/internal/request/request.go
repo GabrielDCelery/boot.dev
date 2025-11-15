@@ -7,21 +7,37 @@ import (
 	"strings"
 )
 
+const bufferSize = 4096
+
 const (
-	Initilaized = iota
-	Done
+	RequestStateInitilaized = iota
+	RequestStateDone
 )
 
 type Request struct {
-	parserState int
+	state       int
 	RequestLine RequestLine
 }
 
 func NewRequest() *Request {
 	return &Request{
-		parserState: Initilaized,
+		state:       RequestStateInitilaized,
 		RequestLine: RequestLine{},
 	}
+}
+
+func (r *Request) parse(data []byte) (int, error) {
+	lines := strings.Split(string(data), "\r\n")
+	if len(lines) == 1 {
+		return 0, nil
+	}
+	requestLine, err := parseRequestLine(lines[0])
+	if err != nil {
+		return 0, err
+	}
+	r.RequestLine = requestLine
+	r.state = RequestStateDone
+	return len([]byte(lines[0])) + 2, nil
 }
 
 type RequestLine struct {
@@ -32,25 +48,36 @@ type RequestLine struct {
 
 func RequestFromReader(reader io.Reader) (*Request, error) {
 	request := NewRequest()
+	buffer := make([]byte, bufferSize)
+	parseTillIndex := 0
 
-	b, err := io.ReadAll(reader)
-	if err != nil {
-		return &Request{}, err
+	for request.state != RequestStateDone {
+		numOfBytesRead, errRead := reader.Read(buffer[parseTillIndex:])
+
+		parseTillIndex += numOfBytesRead
+
+		if parseTillIndex > bufferSize-1 {
+			return &Request{}, fmt.Errorf("failed to process request: exceeded buffer size of %d", bufferSize)
+		}
+
+		numOfBytesParsed, errParse := request.parse(buffer[:parseTillIndex])
+
+		if errParse != nil {
+			return &Request{}, fmt.Errorf("failed to process request: %v", errParse)
+		}
+
+		if errRead != nil {
+			if errRead == io.EOF {
+				break
+			}
+			return &Request{}, fmt.Errorf("failed to process request: %v", errRead)
+		}
+
+		if numOfBytesParsed > 0 {
+			copy(buffer, buffer[numOfBytesParsed:parseTillIndex])
+			parseTillIndex -= numOfBytesParsed
+		}
 	}
-
-	lines := strings.Split(string(b), "\r\n")
-
-	if len(lines) == 0 {
-		return &Request{}, fmt.Errorf("expected request to have request line")
-	}
-
-	requestLine, err := parseRequestLine(lines[0])
-
-	if err != nil {
-		return &Request{}, fmt.Errorf("failed to parse request line: %v", err)
-	}
-
-	request.RequestLine = requestLine
 
 	return request, nil
 }
