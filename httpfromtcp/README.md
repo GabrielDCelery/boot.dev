@@ -110,11 +110,11 @@ assert.Equal(t, "1.1", r.RequestLine.HttpVersion)
 > [!WARN]
 > Be sure to test values as low as 1 and as high as the length of the request string. Our code should work under all conditions.
 
-- [] Update your parseRequestLine to return the number of bytes it consumed. If it can't find an \r\n (this is important!) it should return 0 and no error. This just means that it needs more data before it can parse the request line.
-- [] Add a new internal "enum" (I just used an int) to your Request struct to track the state of the parser. For now, you just need 2 states:
+- [x] Update your parseRequestLine to return the number of bytes it consumed. If it can't find an \r\n (this is important!) it should return 0 and no error. This just means that it needs more data before it can parse the request line.
+- [x] Add a new internal "enum" (I just used an int) to your Request struct to track the state of the parser. For now, you just need 2 states:
   - "initialized"
   - "done".
-- [] Implement a new func (r \*Request) parse(data []byte) (int, error) method.
-  - [] It accepts the next slice of bytes that needs to be parsed into the Request struct
-  - [] It updates the "state" of the parser, and the parsed RequestLine field.
-  - [] It returns the number of bytes it consumed (meaning successfully parsed) and an error if it encountered one.
+- [x] Implement a new func (r \*Request) parse(data []byte) (int, error) method.
+  - [x] It accepts the next slice of bytes that needs to be parsed into the Request struct
+  - [x] It updates the "state" of the parser, and the parsed RequestLine field.
+  - [x] It returns the number of bytes it consumed (meaning successfully parsed) and an error if it encountered one.
