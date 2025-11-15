@@ -28,28 +28,41 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 	if len(lines) == 0 {
 		return &Request{}, fmt.Errorf("expected request to have request line")
 	}
-	requestLineParts := strings.Split(lines[0], " ")
+
+	requestLine, err := parseRequestLine(lines[0])
+
+	if err != nil {
+		return &Request{}, fmt.Errorf("failed to parse request line: %v", err)
+	}
+
+	request := &Request{RequestLine: requestLine}
+
+	return request, nil
+}
+
+func parseRequestLine(line string) (RequestLine, error) {
+	requestLineParts := strings.Split(line, " ")
 
 	if len(requestLineParts) != 3 {
-		return &Request{}, fmt.Errorf("invalid request line, should have three parts")
+		return RequestLine{}, fmt.Errorf("invalid request line, should have three parts")
 	}
 
 	method := requestLineParts[0]
 	requestTarget := requestLineParts[1]
 	httpVersionRaw := requestLineParts[2]
 
-	if err = validateMethod(method); err != nil {
-		return &Request{}, fmt.Errorf("invalid request: %v", err)
+	if err := validateMethod(method); err != nil {
+		return RequestLine{}, fmt.Errorf("invalid request: %v", err)
 	}
 
 	httpVersion, err := validteHttpVersion(httpVersionRaw)
 
 	if err != nil {
-		return &Request{}, fmt.Errorf("invalid http version: %v", err)
+		return RequestLine{}, fmt.Errorf("invalid http version: %v", err)
 	}
 
 	if err = validateRequestTarget(requestTarget); err != nil {
-		return &Request{}, fmt.Errorf("invalid request target: %v", err)
+		return RequestLine{}, fmt.Errorf("invalid request target: %v", err)
 	}
 
 	requestLine := RequestLine{
@@ -58,9 +71,8 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		Method:        method,
 	}
 
-	request := &Request{RequestLine: requestLine}
+	return requestLine, nil
 
-	return request, nil
 }
 
 func validateMethod(method string) error {
