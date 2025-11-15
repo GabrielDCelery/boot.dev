@@ -7,8 +7,21 @@ import (
 	"strings"
 )
 
+const (
+	Initilaized = iota
+	Done
+)
+
 type Request struct {
+	parserState int
 	RequestLine RequestLine
+}
+
+func NewRequest() *Request {
+	return &Request{
+		parserState: Initilaized,
+		RequestLine: RequestLine{},
+	}
 }
 
 type RequestLine struct {
@@ -18,6 +31,8 @@ type RequestLine struct {
 }
 
 func RequestFromReader(reader io.Reader) (*Request, error) {
+	request := NewRequest()
+
 	b, err := io.ReadAll(reader)
 	if err != nil {
 		return &Request{}, err
@@ -35,7 +50,7 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		return &Request{}, fmt.Errorf("failed to parse request line: %v", err)
 	}
 
-	request := &Request{RequestLine: requestLine}
+	request.RequestLine = requestLine
 
 	return request, nil
 }
