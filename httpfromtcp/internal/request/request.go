@@ -79,6 +79,10 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		}
 	}
 
+	if request.state != RequestStateDone {
+		return &Request{}, fmt.Errorf("incomplete HTTP request: reached EOF before request completed")
+	}
+
 	return request, nil
 }
 
