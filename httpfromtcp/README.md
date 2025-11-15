@@ -118,3 +118,29 @@ assert.Equal(t, "1.1", r.RequestLine.HttpVersion)
   - [x] It accepts the next slice of bytes that needs to be parsed into the Request struct
   - [x] It updates the "state" of the parser, and the parsed RequestLine field.
   - [x] It returns the number of bytes it consumed (meaning successfully parsed) and an error if it encountered one.
+
+[CH4 - L6](https://www.boot.dev/lessons/56df6098-0175-4e83-a481-a5381db3d9fd)
+
+- [] Delete your getLinesChannel function - we're working with HTTP now, not just newlines. Similarly, delete the resulting logic that prints the text coming back across its channel.
+- [] Instead, call RequestFromReader. Assuming it's successful, print out the RequestLine in this format (with the dynamic data of course):
+
+```sh
+Request line:
+- Method: GET
+- Target: /
+- Version: 1.1
+```
+
+- [] Run your tcplistener program again from the root of your project and redirect the output to a temporary file:
+
+```sh
+go run ./cmd/tcplistener | tee /tmp/requestline.txt
+```
+
+- [] In another shell, send this request to it:
+
+```sh
+curl http://localhost:42069/prime/agen
+```
+
+- [] Kill both programs. Your requestline.txt file should contain the output of your tcplistener program.

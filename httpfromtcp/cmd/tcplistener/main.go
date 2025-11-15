@@ -2,64 +2,10 @@ package main
 
 import (
 	"fmt"
-	"io"
+	"httpfromtcp/internal/request"
 	"log"
 	"net"
-	"strings"
 )
-
-func getLinesChannel(f io.ReadCloser) <-chan string {
-	ch := make(chan string)
-
-	go func() {
-		defer close(ch)
-
-		currentLine := ""
-
-		buffer := make([]byte, 8)
-
-		for {
-			n, err := f.Read(buffer)
-
-			if err != nil && err != io.EOF {
-				log.Fatalf("failed to read chunk into buffer, reason: %v\n", err)
-			}
-
-			// NOTE: even if we encounter an EOF error according to the docs we might have successfully read bytes into the buffer so first we need to handle the lefover chunk
-			if n > 0 {
-				// NOTE: We need to do the slicing because according to the docs the rest of the buffer might be used as scratch space https://pkg.go.dev/io@go1.25.4#Reader
-				chunk := string(buffer[:n])
-				parts := strings.Split(chunk, "\r\n")
-
-				for i, part := range parts {
-					currentLine += part
-
-					// if we are looking at the last part and there are still leftover bytes in the file then we continue reading from the file
-					if i == len(parts)-1 && err != io.EOF {
-						break
-					}
-
-					ch <- currentLine
-					currentLine = ""
-				}
-
-				clear(buffer)
-			}
-
-			if err == io.EOF {
-				break
-			}
-		}
-
-		//NOTE: need to have this for scenarios where the line ends but there is no new line and we send the EOF when we kill for example the curl process
-		if currentLine != "" {
-			ch <- currentLine
-		}
-
-	}()
-
-	return ch
-}
 
 func main() {
 	listener, err := net.Listen("tcp4", ":42069")
@@ -80,15 +26,20 @@ func main() {
 		}
 
 		go func(conn net.Conn) {
+			defer conn.Close()
+
 			fmt.Printf("connection has been accepted on %s\n", conn.LocalAddr())
 
-			linesChan := getLinesChannel(conn)
+			req, err := request.RequestFromReader(conn)
 
-			for line := range linesChan {
-				fmt.Printf("%s\n", line)
+			if err != nil {
+				log.Fatalf("failed to parse request, reason: %v", err)
 			}
 
-			conn.Close()
+			fmt.Println("Request line:")
+			fmt.Printf("- Methd: %s\n", req.RequestLine.Method)
+			fmt.Printf("- Target: %s\n", req.RequestLine.RequestTarget)
+			fmt.Printf("- Version: %s\n", req.RequestLine.HttpVersion)
 
 			fmt.Printf("connection has been closed on %s\n", conn.LocalAddr())
 		}(conn)
