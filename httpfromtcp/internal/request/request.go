@@ -12,7 +12,7 @@ const bufferSize = 4096
 
 const (
 	RequestStateReadingRequestLine = iota
-	RequestStateReadingFieldLine
+	RequestStateReadingHeaders
 	RequestStateDone
 )
 
@@ -26,7 +26,7 @@ func NewRequest() *Request {
 	return &Request{
 		state:       RequestStateReadingRequestLine,
 		RequestLine: RequestLine{},
-		Headers:     make(map[string]string),
+		Headers:     headers.NewHeaders(),
 	}
 }
 
@@ -34,18 +34,19 @@ func (r *Request) Parse(data []byte) (int, error) {
 	numOfBytesParsed := 0
 	pointer := 0
 	for {
-		if pointer == len(data) {
+		// if the request has been processed exit
+		if r.state == RequestStateDone {
 			break
 		}
-		if r.state == RequestStateDone {
+		// if we reached the end of the buffer without encountering a newline or the end of the body we need more data
+		if pointer == len(data) {
 			break
 		}
 		if r.state == RequestStateReadingRequestLine {
 			char := data[pointer]
 			if char == '\r' {
 				if pointer == len(data)-1 {
-					pointer += 1
-					continue
+					break
 				}
 
 				if data[pointer+1] == '\n' {
@@ -54,9 +55,31 @@ func (r *Request) Parse(data []byte) (int, error) {
 						return 0, err
 					}
 					r.RequestLine = requestLine
-					r.state = RequestStateDone
+					r.state = RequestStateReadingHeaders
 					pointer += 2
-					numOfBytesParsed += pointer
+					numOfBytesParsed = pointer
+					continue
+				}
+			}
+			pointer += 1
+		}
+		if r.state == RequestStateReadingHeaders {
+			char := data[pointer]
+			if char == '\r' {
+				if pointer == len(data)-1 {
+					break
+				}
+				if data[pointer+1] == '\n' {
+					if pointer == numOfBytesParsed {
+						r.state = RequestStateDone
+						pointer += 2
+						numOfBytesParsed = pointer
+						continue
+					}
+					line := string(data[numOfBytesParsed:pointer])
+					r.Headers.ParseLine(line)
+					pointer += 2
+					numOfBytesParsed = pointer
 					continue
 				}
 			}
@@ -106,7 +129,7 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 	}
 
 	if request.state != RequestStateDone {
-		return &Request{}, fmt.Errorf("incomplete HTTP request: reached EOF before request completed")
+		return &Request{}, fmt.Errorf("incomplete HTTP request: reached EOF before request completed, request %+v", request)
 	}
 
 	return request, nil

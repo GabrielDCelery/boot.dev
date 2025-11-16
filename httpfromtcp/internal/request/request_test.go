@@ -38,7 +38,7 @@ func TestRequestLineParse(t *testing.T) {
 
 	t.Run("Good POST Request Line", func(t *testing.T) {
 		t.Parallel()
-		r, err := RequestFromReader(strings.NewReader("POST /coffee HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\n"))
+		r, err := RequestFromReader(strings.NewReader("POST /coffee HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\n\r\n"))
 		require.NoError(t, err)
 		require.NotNil(t, r)
 		assert.Equal(t, "POST", r.RequestLine.Method)
@@ -78,6 +78,23 @@ func TestRequestLineParse(t *testing.T) {
 		assert.Equal(t, "GET", r.RequestLine.Method)
 		assert.Equal(t, "/coffee", r.RequestLine.RequestTarget)
 		assert.Equal(t, "1.1", r.RequestLine.HttpVersion)
+	})
+
+	t.Run("Good GET request with headers", func(t *testing.T) {
+		t.Parallel()
+		reader := &chunkReader{
+			data:              "GET / HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n",
+			numOfBytesPerRead: 3,
+		}
+		r, err := RequestFromReader(reader)
+		require.NoError(t, err)
+		require.NotNil(t, r)
+		assert.Equal(t, "GET", r.RequestLine.Method)
+		assert.Equal(t, "/", r.RequestLine.RequestTarget)
+		assert.Equal(t, "1.1", r.RequestLine.HttpVersion)
+		assert.Equal(t, "localhost:42069", r.Headers["Host"])
+		assert.Equal(t, "curl/7.81.0", r.Headers["User-Agent"])
+		assert.Equal(t, "*/*", r.Headers["Accept"])
 	})
 }
 

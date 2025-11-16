@@ -11,7 +11,7 @@ func TestHeaderParse(t *testing.T) {
 	t.Run("Valid single header", func(t *testing.T) {
 		headers := NewHeaders()
 		line := "Host: localhost:42069"
-		err := headers.parseLine(line)
+		err := headers.ParseLine(line)
 		require.NoError(t, err)
 		assert.Equal(t, "localhost:42069", headers["Host"])
 	})
@@ -19,7 +19,7 @@ func TestHeaderParse(t *testing.T) {
 	t.Run("Invalid spacing header", func(t *testing.T) {
 		headers := NewHeaders()
 		line := "       Host : localhost:42069       "
-		err := headers.parseLine(line)
+		err := headers.ParseLine(line)
 		require.Error(t, err)
 		assert.Equal(t, 0, len(headers))
 	})
@@ -27,7 +27,7 @@ func TestHeaderParse(t *testing.T) {
 	t.Run("Invalid characters in field name", func(t *testing.T) {
 		headers := NewHeaders()
 		line := "H@st: loclahost:42069"
-		err := headers.parseLine(line)
+		err := headers.ParseLine(line)
 		require.Error(t, err)
 		assert.Equal(t, 0, len(headers))
 	})
@@ -35,7 +35,7 @@ func TestHeaderParse(t *testing.T) {
 	t.Run("Invalid delimiter in field name", func(t *testing.T) {
 		headers := NewHeaders()
 		line := "H,st: loclahost:42069"
-		err := headers.parseLine(line)
+		err := headers.ParseLine(line)
 		require.Error(t, err)
 		assert.Equal(t, 0, len(headers))
 	})
@@ -43,16 +43,16 @@ func TestHeaderParse(t *testing.T) {
 	t.Run("Converts field names to canonical", func(t *testing.T) {
 		headers := NewHeaders()
 		line := "content-type: text/html"
-		err := headers.parseLine(line)
+		err := headers.ParseLine(line)
 		require.NoError(t, err)
 		assert.Equal(t, "text/html", headers["Content-Type"])
 	})
 
 	t.Run("Combines the same headers together", func(t *testing.T) {
 		headers := NewHeaders()
-		err1 := headers.parseLine("Set-Person: lane-loves-go")
-		err2 := headers.parseLine("Set-Person: prime-loves-zig")
-		err3 := headers.parseLine("Set-Person: tj-loves-ocaml")
+		err1 := headers.ParseLine("Set-Person: lane-loves-go")
+		err2 := headers.ParseLine("Set-Person: prime-loves-zig")
+		err3 := headers.ParseLine("Set-Person: tj-loves-ocaml")
 		require.NoError(t, err1)
 		require.NoError(t, err2)
 		require.NoError(t, err3)
