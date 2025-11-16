@@ -2,6 +2,7 @@ package request
 
 import (
 	"fmt"
+	"httpfromtcp/internal/headers"
 	"io"
 	"slices"
 	"strings"
@@ -18,12 +19,14 @@ const (
 type Request struct {
 	state       int
 	RequestLine RequestLine
+	Headers     headers.Headers
 }
 
 func NewRequest() *Request {
 	return &Request{
 		state:       RequestStateReadingRequestLine,
 		RequestLine: RequestLine{},
+		Headers:     make(map[string]string),
 	}
 }
 
@@ -37,42 +40,30 @@ func (r *Request) Parse(data []byte) (int, error) {
 		if r.state == RequestStateDone {
 			break
 		}
-		char := data[pointer]
-		if char == '\r' {
-			if pointer == len(data)-1 {
-				pointer += 1
-				continue
-			}
-
-			if data[pointer+1] == '\n' {
-				err := r.parseLine(string(data[numOfBytesParsed:pointer]))
-				if err != nil {
-					return 0, err
+		if r.state == RequestStateReadingRequestLine {
+			char := data[pointer]
+			if char == '\r' {
+				if pointer == len(data)-1 {
+					pointer += 1
+					continue
 				}
-				pointer += 2
-				numOfBytesParsed += pointer
-				continue
+
+				if data[pointer+1] == '\n' {
+					requestLine, err := parseLineAsRequestLine(string(data[numOfBytesParsed:pointer]))
+					if err != nil {
+						return 0, err
+					}
+					r.RequestLine = requestLine
+					r.state = RequestStateDone
+					pointer += 2
+					numOfBytesParsed += pointer
+					continue
+				}
 			}
+			pointer += 1
 		}
-		pointer += 1
 	}
 	return numOfBytesParsed, nil
-}
-
-func (r *Request) parseLine(line string) error {
-	switch r.state {
-	case RequestStateReadingRequestLine:
-		requestLine, err := parseLineAsRequestLine(line)
-		if err != nil {
-			return err
-		}
-		r.RequestLine = requestLine
-		r.state = RequestStateDone
-	case RequestStateReadingFieldLine:
-		r.state = RequestStateDone
-	default:
-	}
-	return nil
 }
 
 // func (r *Request) parseLine(line string) {}
