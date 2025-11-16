@@ -66,8 +66,6 @@ func (r *Request) Parse(data []byte) (int, error) {
 	return numOfBytesParsed, nil
 }
 
-// func (r *Request) parseLine(line string) {}
-
 type RequestLine struct {
 	HttpVersion   string
 	RequestTarget string
