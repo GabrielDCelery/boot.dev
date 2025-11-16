@@ -32,61 +32,47 @@ func NewRequest() *Request {
 
 func (r *Request) Parse(data []byte) (int, error) {
 	numOfBytesParsed := 0
-	pointer := 0
 	for {
-		// if the request has been processed exit
 		if r.state == RequestStateDone {
 			break
 		}
-		// if we reached the end of the buffer without encountering a newline or the end of the body we need more data
-		if pointer == len(data) {
-			break
+		lineEnd, hasCompleteLine := findNextCRLF(data, numOfBytesParsed)
+		if !hasCompleteLine {
+			return numOfBytesParsed, nil
+		}
+		line := string(data[numOfBytesParsed:(lineEnd - 2)])
+		if len(line) == 0 {
+			r.state = RequestStateDone
+			numOfBytesParsed = lineEnd
+			continue
 		}
 		if r.state == RequestStateReadingRequestLine {
-			char := data[pointer]
-			if char == '\r' {
-				if pointer == len(data)-1 {
-					break
-				}
-
-				if data[pointer+1] == '\n' {
-					requestLine, err := parseLineAsRequestLine(string(data[numOfBytesParsed:pointer]))
-					if err != nil {
-						return 0, err
-					}
-					r.RequestLine = requestLine
-					r.state = RequestStateReadingHeaders
-					pointer += 2
-					numOfBytesParsed = pointer
-					continue
-				}
+			requestLine, err := parseLineAsRequestLine(line)
+			if err != nil {
+				return 0, err
 			}
-			pointer += 1
+			r.RequestLine = requestLine
+			r.state = RequestStateReadingHeaders
+			numOfBytesParsed = lineEnd
+			continue
 		}
 		if r.state == RequestStateReadingHeaders {
-			char := data[pointer]
-			if char == '\r' {
-				if pointer == len(data)-1 {
-					break
-				}
-				if data[pointer+1] == '\n' {
-					if pointer == numOfBytesParsed {
-						r.state = RequestStateDone
-						pointer += 2
-						numOfBytesParsed = pointer
-						continue
-					}
-					line := string(data[numOfBytesParsed:pointer])
-					r.Headers.ParseLine(line)
-					pointer += 2
-					numOfBytesParsed = pointer
-					continue
-				}
-			}
-			pointer += 1
+			r.Headers.ParseLine(line)
+			numOfBytesParsed = lineEnd
+			continue
 		}
 	}
 	return numOfBytesParsed, nil
+}
+
+func findNextCRLF(data []byte, start int) (lineEnd int, hasCompleteLine bool) {
+	for i := start; i < len(data); i++ {
+		char := data[i]
+		if char == '\r' && i != len(data)-1 && data[i+1] == '\n' {
+			return i + 2, true
+		}
+	}
+	return 0, false
 }
 
 type RequestLine struct {
