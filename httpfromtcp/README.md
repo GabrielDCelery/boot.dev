@@ -147,20 +147,20 @@ curl http://localhost:42069/prime/agen
 
 [CH5 - L1](https://www.boot.dev/lessons/fcb679e5-7947-4b57-8b69-9136d495441a)
 
-- [] Create a new package in your internal directory called headers.
-- [] Create a headers.go file in the headers package and add the following new type:
+- [x] Create a new package in your internal directory called headers.
+- [x] Create a headers.go file in the headers package and add the following new type:
 
 ```go
 type Headers map[string]string
 ```
 
-- [] Create a new method for parsing request data into the Headers map:
+- [x] Create a new method for parsing request data into the Headers map:
 
 ```go
 func (h Headers) Parse(data []byte) (n int, done bool, err error)
 ```
 
-- [] Create a new headers_test.go file in the headers package. Here are two simple tests I wrote:
+- [x] Create a new headers_test.go file in the headers package. Here are two simple tests I wrote:
 
 ```go
 // Test: Valid single header
@@ -182,19 +182,11 @@ assert.Equal(t, 0, n)
 assert.False(t, done)
 ```
 
-- [] Update your parse method to pass this single test. It should:
-  - [] Mutate the Headers by adding newly parsed key-value pairs
-  - [] Return n (the number of bytes consumed), done (whether or not it has finished parsing headers), and err (if it encountered an error)
-  - [] Look for a CRLF, if it doesn't find one, assume you haven't been given enough data yet. Consume no data, return false for done, and nil for err.
-  - [] If you do find a CRLF, but it's at the start of the data, you've found the end of the headers, so return the proper values immediately.
-  - [] Remove any extra whitespace from the key and value, but ensure there are no spaces between the colon and the key.
-  - [] Assuming the format was valid (if it isn't return an error), add the key/value pair to the Headers map and return the number of bytes consumed. Note: The Parse function should only return done=true when the data starts with a CRLF, which can't happen when it finds a new key/value pair.
-  - [] It's important to understand that this function will be called over and over until all the headers are parsed, and it can only parse one key/value pair at a time.
-
-- [] Add more tests to account for all the edge cases described above. Here are the names of my tests:
-  - [] "Valid single header"
-  - [] "Valid single header with extra whitespace"
-  - [] "Valid 2 headers with existing headers"
-  - [] "Valid done"
-  - [] "Invalid spacing header"
-  - [] Run and submit the CLI tests.
+- [x] Update your parse method to pass this single test. It should:
+  - [x] Mutate the Headers by adding newly parsed key-value pairs
+  - [x] Return n (the number of bytes consumed), done (whether or not it has finished parsing headers), and err (if it encountered an error)
+  - [x] Look for a CRLF, if it doesn't find one, assume you haven't been given enough data yet. Consume no data, return false for done, and nil for err.
+  - [x] If you do find a CRLF, but it's at the start of the data, you've found the end of the headers, so return the proper values immediately.
+  - [x] Remove any extra whitespace from the key and value, but ensure there are no spaces between the colon and the key.
+  - [x] Assuming the format was valid (if it isn't return an error), add the key/value pair to the Headers map and return the number of bytes consumed. Note: The Parse function should only return done=true when the data starts with a CRLF, which can't happen when it finds a new key/value pair.
+  - [x] It's important to understand that this function will be called over and over until all the headers are parsed, and it can only parse one key/value pair at a time.
