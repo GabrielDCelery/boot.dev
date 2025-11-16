@@ -4,31 +4,30 @@ import (
 	"bytes"
 	"fmt"
 	"httpfromtcp/internal/headers"
+	"httpfromtcp/internal/requestline"
 	"io"
-	"slices"
-	"strings"
 )
 
 const bufferSize = 4096
 
 const (
-	RequestStateReadingRequestLine = iota
-	RequestStateReadingHeaders
-	RequestStateDone
+	StateReadingRequestLine = iota
+	StateReadingHeaders
+	StateDone
 )
 
 const CRLFbytes = 2
 
 type Request struct {
 	state       int
-	RequestLine RequestLine
+	RequestLine requestline.RequestLine
 	Headers     headers.Headers
 }
 
 func NewRequest() *Request {
 	return &Request{
-		state:       RequestStateReadingRequestLine,
-		RequestLine: RequestLine{},
+		state:       StateReadingRequestLine,
+		RequestLine: requestline.NewRequestLine(),
 		Headers:     headers.NewHeaders(),
 	}
 }
@@ -36,7 +35,7 @@ func NewRequest() *Request {
 func (r *Request) Parse(data []byte) (int, error) {
 	numOfBytesParsed := 0
 	for {
-		if r.state == RequestStateDone {
+		if r.state == StateDone {
 			break
 		}
 		lineEnd, hasCompleteLine := findNextCRLF(data, numOfBytesParsed)
@@ -54,17 +53,17 @@ func (r *Request) Parse(data []byte) (int, error) {
 }
 
 func (r *Request) parseLine(line string) error {
-	if r.state == RequestStateReadingRequestLine {
+	if r.state == StateReadingRequestLine {
 		err := r.RequestLine.ParseLine(line)
 		if err != nil {
 			return err
 		}
-		r.state = RequestStateReadingHeaders
+		r.state = StateReadingHeaders
 		return nil
 	}
-	if r.state == RequestStateReadingHeaders {
+	if r.state == StateReadingHeaders {
 		if len(line) == 0 {
-			r.state = RequestStateDone
+			r.state = StateDone
 			return nil
 		}
 		err := r.Headers.ParseLine(line)
@@ -89,7 +88,7 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 	buffer := make([]byte, bufferSize)
 	parseTillIndex := 0
 
-	for request.state != RequestStateDone {
+	for request.state != StateDone {
 		numOfBytesRead, errRead := reader.Read(buffer[parseTillIndex:])
 
 		parseTillIndex += numOfBytesRead
@@ -117,73 +116,9 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		}
 	}
 
-	if request.state != RequestStateDone {
+	if request.state != StateDone {
 		return &Request{}, fmt.Errorf("incomplete HTTP request: reached EOF before request completed, request %+v", request)
 	}
 
 	return request, nil
-}
-
-type RequestLine struct {
-	HttpVersion   string
-	RequestTarget string
-	Method        string
-}
-
-func (rl *RequestLine) ParseLine(line string) error {
-	requestLineParts := strings.Split(line, " ")
-
-	if len(requestLineParts) != 3 {
-		return fmt.Errorf("invalid request line '%s', should have three parts", line)
-	}
-
-	method := requestLineParts[0]
-	requestTarget := requestLineParts[1]
-	httpVersionRaw := requestLineParts[2]
-
-	if err := validateMethod(method); err != nil {
-		return fmt.Errorf("invalid request: %v", err)
-	}
-
-	httpVersion, err := validateHttpVersion(httpVersionRaw)
-
-	if err != nil {
-		return fmt.Errorf("invalid http version: %v", err)
-	}
-
-	if err = validateRequestTarget(requestTarget); err != nil {
-		return fmt.Errorf("invalid request target: %v", err)
-	}
-
-	rl.HttpVersion = httpVersion
-	rl.RequestTarget = requestTarget
-	rl.Method = method
-
-	return nil
-}
-
-func validateMethod(method string) error {
-	validMethods := []string{"GET", "POST", "PUT", "DELETE"}
-	if slices.Contains(validMethods, method) {
-		return nil
-	}
-	return fmt.Errorf("invalid method, received: '%s', valid values are: %v", method, validMethods)
-}
-
-func validateHttpVersion(httpVersion string) (string, error) {
-	validHttpVersions := []string{"HTTP/1.1"}
-	if slices.Contains(validHttpVersions, httpVersion) {
-		return strings.Replace(httpVersion, "HTTP/", "", 1), nil
-	}
-	return "", fmt.Errorf("invalid http version, received: '%s', valid values are: %v", httpVersion, validHttpVersions)
-}
-
-func validateRequestTarget(target string) error {
-	if target == "" {
-		return fmt.Errorf("request target can not be empty")
-	}
-	if !strings.HasPrefix(target, "/") && !strings.HasPrefix(target, "http://") && !strings.HasPrefix(target, "https://") {
-		return fmt.Errorf("invalid request target '%s', must start with '/', 'http://' or 'https://'", target)
-	}
-	return nil
 }
