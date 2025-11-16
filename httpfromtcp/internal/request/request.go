@@ -1,6 +1,7 @@
 package request
 
 import (
+	"bytes"
 	"fmt"
 	"httpfromtcp/internal/headers"
 	"io"
@@ -15,6 +16,8 @@ const (
 	RequestStateReadingHeaders
 	RequestStateDone
 )
+
+const CRLFbytes = 2
 
 type Request struct {
 	state       int
@@ -40,7 +43,7 @@ func (r *Request) Parse(data []byte) (int, error) {
 		if !hasCompleteLine {
 			return numOfBytesParsed, nil
 		}
-		line := string(data[numOfBytesParsed:(lineEnd - 2)])
+		line := string(data[numOfBytesParsed:(lineEnd - CRLFbytes)])
 		err := r.parseLine(line)
 		if err != nil {
 			return 0, err
@@ -74,13 +77,11 @@ func (r *Request) parseLine(line string) error {
 }
 
 func findNextCRLF(data []byte, start int) (lineEnd int, hasCompleteLine bool) {
-	for i := start; i < len(data); i++ {
-		char := data[i]
-		if char == '\r' && i != len(data)-1 && data[i+1] == '\n' {
-			return i + 2, true
-		}
+	i := bytes.Index(data[start:], []byte("\r\n"))
+	if i == -1 {
+		return 0, false
 	}
-	return 0, false
+	return start + i + CRLFbytes, true
 }
 
 func RequestFromReader(reader io.Reader) (*Request, error) {
