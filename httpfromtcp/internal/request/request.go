@@ -64,7 +64,10 @@ func (r *Request) parseLine(line string) error {
 			r.state = RequestStateDone
 			return nil
 		}
-		r.Headers.ParseLine(line)
+		err := r.Headers.ParseLine(line)
+		if err != nil {
+			return err
+		}
 		return nil
 	}
 	return fmt.Errorf("unhandled state")
