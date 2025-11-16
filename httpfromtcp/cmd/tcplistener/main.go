@@ -41,6 +41,13 @@ func main() {
 			fmt.Printf("- Target: %s\n", req.RequestLine.RequestTarget)
 			fmt.Printf("- Version: %s\n", req.RequestLine.HttpVersion)
 
+			fmt.Println("Headers")
+			for k, v := range req.Headers {
+				fmt.Printf("- %s - %v\n", k, v)
+			}
+			response := "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\n\r\nOK"
+			conn.Write([]byte(response))
+
 			fmt.Printf("connection has been closed on %s\n", conn.LocalAddr())
 		}(conn)
 	}
