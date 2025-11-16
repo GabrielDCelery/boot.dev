@@ -141,7 +141,7 @@ func (rl *RequestLine) ParseLine(line string) error {
 		return fmt.Errorf("invalid request: %v", err)
 	}
 
-	httpVersion, err := validteHttpVersion(httpVersionRaw)
+	httpVersion, err := validateHttpVersion(httpVersionRaw)
 
 	if err != nil {
 		return fmt.Errorf("invalid http version: %v", err)
@@ -166,7 +166,7 @@ func validateMethod(method string) error {
 	return fmt.Errorf("invalid method, received: '%s', valid values are: %v", method, validMethods)
 }
 
-func validteHttpVersion(httpVersion string) (string, error) {
+func validateHttpVersion(httpVersion string) (string, error) {
 	validHttpVersions := []string{"HTTP/1.1"}
 	if slices.Contains(validHttpVersions, httpVersion) {
 		return strings.Replace(httpVersion, "HTTP/", "", 1), nil
