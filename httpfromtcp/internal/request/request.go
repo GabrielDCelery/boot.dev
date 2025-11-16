@@ -11,9 +11,9 @@ import (
 const bufferSize = 4096
 
 const (
-	StateReadingRequestLine = iota
-	StateReadingHeaders
-	StateDone
+	RequestStateReadingRequestLine = iota
+	RequestStateReadingHeaders
+	RequestStateDone
 )
 
 const CRLFbytes = 2
@@ -26,14 +26,14 @@ type Request struct {
 
 func RequestFromReader(reader io.Reader) (*Request, error) {
 	request := &Request{
-		state:       StateReadingRequestLine,
+		state:       RequestStateReadingRequestLine,
 		RequestLine: requestline.NewRequestLine(),
 		Headers:     headers.NewHeaders(),
 	}
 	buffer := make([]byte, bufferSize)
 	parseTillIndex := 0
 
-	for request.state != StateDone {
+	for request.state != RequestStateDone {
 		numOfBytesRead, errRead := reader.Read(buffer[parseTillIndex:])
 
 		parseTillIndex += numOfBytesRead
@@ -61,7 +61,7 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		}
 	}
 
-	if request.state != StateDone {
+	if request.state != RequestStateDone {
 		return &Request{}, fmt.Errorf("incomplete HTTP request: reached EOF before request completed, request %+v", request)
 	}
 
@@ -71,7 +71,7 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 func (r *Request) parse(data []byte) (int, error) {
 	numOfBytesParsed := 0
 	for {
-		if r.state == StateDone {
+		if r.state == RequestStateDone {
 			break
 		}
 		lineEnd, hasCompleteLine := findNextCRLF(data, numOfBytesParsed)
@@ -89,17 +89,17 @@ func (r *Request) parse(data []byte) (int, error) {
 }
 
 func (r *Request) parseLine(line string) error {
-	if r.state == StateReadingRequestLine {
+	if r.state == RequestStateReadingRequestLine {
 		err := r.RequestLine.ParseLine(line)
 		if err != nil {
 			return err
 		}
-		r.state = StateReadingHeaders
+		r.state = RequestStateReadingHeaders
 		return nil
 	}
-	if r.state == StateReadingHeaders {
+	if r.state == RequestStateReadingHeaders {
 		if len(line) == 0 {
-			r.state = StateDone
+			r.state = RequestStateDone
 			return nil
 		}
 		err := r.Headers.ParseLine(line)
