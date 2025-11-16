@@ -23,4 +23,28 @@ func TestHeaderParse(t *testing.T) {
 		require.Error(t, err)
 		assert.Equal(t, 0, len(headers))
 	})
+
+	t.Run("Invalid characters in field name", func(t *testing.T) {
+		headers := NewHeaders()
+		line := "H@st: loclahost:42069"
+		err := headers.parseLine(line)
+		require.Error(t, err)
+		assert.Equal(t, 0, len(headers))
+	})
+
+	t.Run("Invalid delimiter in field name", func(t *testing.T) {
+		headers := NewHeaders()
+		line := "H,st: loclahost:42069"
+		err := headers.parseLine(line)
+		require.Error(t, err)
+		assert.Equal(t, 0, len(headers))
+	})
+
+	t.Run("Converts field names to canonical", func(t *testing.T) {
+		headers := NewHeaders()
+		line := "content-type: text/html"
+		err := headers.parseLine(line)
+		require.NoError(t, err)
+		assert.Equal(t, "text/html", headers["Content-Type"])
+	})
 }
