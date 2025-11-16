@@ -41,28 +41,33 @@ func (r *Request) Parse(data []byte) (int, error) {
 			return numOfBytesParsed, nil
 		}
 		line := string(data[numOfBytesParsed:(lineEnd - 2)])
-		if len(line) == 0 {
-			r.state = RequestStateDone
-			numOfBytesParsed = lineEnd
-			continue
+		err := r.parseLine(line)
+		if err != nil {
+			return 0, err
 		}
-		if r.state == RequestStateReadingRequestLine {
-			requestLine, err := parseLineAsRequestLine(line)
-			if err != nil {
-				return 0, err
-			}
-			r.RequestLine = requestLine
-			r.state = RequestStateReadingHeaders
-			numOfBytesParsed = lineEnd
-			continue
-		}
-		if r.state == RequestStateReadingHeaders {
-			r.Headers.ParseLine(line)
-			numOfBytesParsed = lineEnd
-			continue
-		}
+		numOfBytesParsed = lineEnd
 	}
 	return numOfBytesParsed, nil
+}
+
+func (r *Request) parseLine(line string) error {
+	if r.state == RequestStateReadingRequestLine {
+		err := r.RequestLine.ParseLine(line)
+		if err != nil {
+			return err
+		}
+		r.state = RequestStateReadingHeaders
+		return nil
+	}
+	if r.state == RequestStateReadingHeaders {
+		if len(line) == 0 {
+			r.state = RequestStateDone
+			return nil
+		}
+		r.Headers.ParseLine(line)
+		return nil
+	}
+	return fmt.Errorf("unhandled state")
 }
 
 func findNextCRLF(data []byte, start int) (lineEnd int, hasCompleteLine bool) {
@@ -73,12 +78,6 @@ func findNextCRLF(data []byte, start int) (lineEnd int, hasCompleteLine bool) {
 		}
 	}
 	return 0, false
-}
-
-type RequestLine struct {
-	HttpVersion   string
-	RequestTarget string
-	Method        string
 }
 
 func RequestFromReader(reader io.Reader) (*Request, error) {
@@ -121,11 +120,17 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 	return request, nil
 }
 
-func parseLineAsRequestLine(line string) (RequestLine, error) {
+type RequestLine struct {
+	HttpVersion   string
+	RequestTarget string
+	Method        string
+}
+
+func (rl *RequestLine) ParseLine(line string) error {
 	requestLineParts := strings.Split(line, " ")
 
 	if len(requestLineParts) != 3 {
-		return RequestLine{}, fmt.Errorf("invalid request line '%s', should have three parts", line)
+		return fmt.Errorf("invalid request line '%s', should have three parts", line)
 	}
 
 	method := requestLineParts[0]
@@ -133,27 +138,24 @@ func parseLineAsRequestLine(line string) (RequestLine, error) {
 	httpVersionRaw := requestLineParts[2]
 
 	if err := validateMethod(method); err != nil {
-		return RequestLine{}, fmt.Errorf("invalid request: %v", err)
+		return fmt.Errorf("invalid request: %v", err)
 	}
 
 	httpVersion, err := validteHttpVersion(httpVersionRaw)
 
 	if err != nil {
-		return RequestLine{}, fmt.Errorf("invalid http version: %v", err)
+		return fmt.Errorf("invalid http version: %v", err)
 	}
 
 	if err = validateRequestTarget(requestTarget); err != nil {
-		return RequestLine{}, fmt.Errorf("invalid request target: %v", err)
+		return fmt.Errorf("invalid request target: %v", err)
 	}
 
-	requestLine := RequestLine{
-		HttpVersion:   httpVersion,
-		RequestTarget: requestTarget,
-		Method:        method,
-	}
+	rl.HttpVersion = httpVersion
+	rl.RequestTarget = requestTarget
+	rl.Method = method
 
-	return requestLine, nil
-
+	return nil
 }
 
 func validateMethod(method string) error {
