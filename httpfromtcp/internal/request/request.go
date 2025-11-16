@@ -24,15 +24,51 @@ type Request struct {
 	Headers     headers.Headers
 }
 
-func NewRequest() *Request {
-	return &Request{
+func RequestFromReader(reader io.Reader) (*Request, error) {
+	request := &Request{
 		state:       StateReadingRequestLine,
 		RequestLine: requestline.NewRequestLine(),
 		Headers:     headers.NewHeaders(),
 	}
+	buffer := make([]byte, bufferSize)
+	parseTillIndex := 0
+
+	for request.state != StateDone {
+		numOfBytesRead, errRead := reader.Read(buffer[parseTillIndex:])
+
+		parseTillIndex += numOfBytesRead
+
+		if parseTillIndex > bufferSize-1 {
+			return &Request{}, fmt.Errorf("failed to process request: exceeded buffer size of %d", bufferSize)
+		}
+
+		numOfBytesParsed, errParse := request.parse(buffer[:parseTillIndex])
+
+		if errParse != nil {
+			return &Request{}, fmt.Errorf("failed to process request: %v", errParse)
+		}
+
+		if errRead != nil {
+			if errRead == io.EOF {
+				break
+			}
+			return &Request{}, fmt.Errorf("failed to process request: %v", errRead)
+		}
+
+		if numOfBytesParsed > 0 {
+			copy(buffer, buffer[numOfBytesParsed:parseTillIndex])
+			parseTillIndex -= numOfBytesParsed
+		}
+	}
+
+	if request.state != StateDone {
+		return &Request{}, fmt.Errorf("incomplete HTTP request: reached EOF before request completed, request %+v", request)
+	}
+
+	return request, nil
 }
 
-func (r *Request) Parse(data []byte) (int, error) {
+func (r *Request) parse(data []byte) (int, error) {
 	numOfBytesParsed := 0
 	for {
 		if r.state == StateDone {
@@ -81,44 +117,4 @@ func findNextCRLF(data []byte, start int) (lineEnd int, hasCompleteLine bool) {
 		return 0, false
 	}
 	return start + i + CRLFbytes, true
-}
-
-func RequestFromReader(reader io.Reader) (*Request, error) {
-	request := NewRequest()
-	buffer := make([]byte, bufferSize)
-	parseTillIndex := 0
-
-	for request.state != StateDone {
-		numOfBytesRead, errRead := reader.Read(buffer[parseTillIndex:])
-
-		parseTillIndex += numOfBytesRead
-
-		if parseTillIndex > bufferSize-1 {
-			return &Request{}, fmt.Errorf("failed to process request: exceeded buffer size of %d", bufferSize)
-		}
-
-		numOfBytesParsed, errParse := request.Parse(buffer[:parseTillIndex])
-
-		if errParse != nil {
-			return &Request{}, fmt.Errorf("failed to process request: %v", errParse)
-		}
-
-		if errRead != nil {
-			if errRead == io.EOF {
-				break
-			}
-			return &Request{}, fmt.Errorf("failed to process request: %v", errRead)
-		}
-
-		if numOfBytesParsed > 0 {
-			copy(buffer, buffer[numOfBytesParsed:parseTillIndex])
-			parseTillIndex -= numOfBytesParsed
-		}
-	}
-
-	if request.state != StateDone {
-		return &Request{}, fmt.Errorf("incomplete HTTP request: reached EOF before request completed, request %+v", request)
-	}
-
-	return request, nil
 }
