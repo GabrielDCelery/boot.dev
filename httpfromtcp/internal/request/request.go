@@ -10,7 +10,8 @@ import (
 const bufferSize = 4096
 
 const (
-	RequestStateInitilaized = iota
+	RequestStateReadingRequestLine = iota
+	RequestStateReadingFieldLine
 	RequestStateDone
 )
 
@@ -21,24 +22,60 @@ type Request struct {
 
 func NewRequest() *Request {
 	return &Request{
-		state:       RequestStateInitilaized,
+		state:       RequestStateReadingRequestLine,
 		RequestLine: RequestLine{},
 	}
 }
 
-func (r *Request) parse(data []byte) (int, error) {
-	lines := strings.Split(string(data), "\r\n")
-	if len(lines) == 1 {
-		return 0, nil
+func (r *Request) Parse(data []byte) (int, error) {
+	numOfBytesParsed := 0
+	pointer := 0
+	for {
+		if pointer == len(data) {
+			break
+		}
+		if r.state == RequestStateDone {
+			break
+		}
+		char := data[pointer]
+		if char == '\r' {
+			if pointer == len(data)-1 {
+				pointer += 1
+				continue
+			}
+
+			if data[pointer+1] == '\n' {
+				err := r.parseLine(string(data[numOfBytesParsed:pointer]))
+				if err != nil {
+					return 0, err
+				}
+				pointer += 2
+				numOfBytesParsed += pointer
+				continue
+			}
+		}
+		pointer += 1
 	}
-	requestLine, err := parseRequestLine(lines[0])
-	if err != nil {
-		return 0, err
-	}
-	r.RequestLine = requestLine
-	r.state = RequestStateDone
-	return len([]byte(lines[0])) + 2, nil
+	return numOfBytesParsed, nil
 }
+
+func (r *Request) parseLine(line string) error {
+	switch r.state {
+	case RequestStateReadingRequestLine:
+		requestLine, err := parseLineAsRequestLine(line)
+		if err != nil {
+			return err
+		}
+		r.RequestLine = requestLine
+		r.state = RequestStateDone
+	case RequestStateReadingFieldLine:
+		r.state = RequestStateDone
+	default:
+	}
+	return nil
+}
+
+// func (r *Request) parseLine(line string) {}
 
 type RequestLine struct {
 	HttpVersion   string
@@ -60,7 +97,7 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 			return &Request{}, fmt.Errorf("failed to process request: exceeded buffer size of %d", bufferSize)
 		}
 
-		numOfBytesParsed, errParse := request.parse(buffer[:parseTillIndex])
+		numOfBytesParsed, errParse := request.Parse(buffer[:parseTillIndex])
 
 		if errParse != nil {
 			return &Request{}, fmt.Errorf("failed to process request: %v", errParse)
@@ -86,11 +123,11 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 	return request, nil
 }
 
-func parseRequestLine(line string) (RequestLine, error) {
+func parseLineAsRequestLine(line string) (RequestLine, error) {
 	requestLineParts := strings.Split(line, " ")
 
 	if len(requestLineParts) != 3 {
-		return RequestLine{}, fmt.Errorf("invalid request line, should have three parts")
+		return RequestLine{}, fmt.Errorf("invalid request line '%s', should have three parts", line)
 	}
 
 	method := requestLineParts[0]
