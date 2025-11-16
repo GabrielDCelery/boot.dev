@@ -47,4 +47,15 @@ func TestHeaderParse(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "text/html", headers["Content-Type"])
 	})
+
+	t.Run("Combines the same headers together", func(t *testing.T) {
+		headers := NewHeaders()
+		err1 := headers.parseLine("Set-Person: lane-loves-go")
+		err2 := headers.parseLine("Set-Person: prime-loves-zig")
+		err3 := headers.parseLine("Set-Person: tj-loves-ocaml")
+		require.NoError(t, err1)
+		require.NoError(t, err2)
+		require.NoError(t, err3)
+		assert.Equal(t, "lane-loves-go, prime-loves-zig, tj-loves-ocaml", headers["Set-Person"])
+	})
 }

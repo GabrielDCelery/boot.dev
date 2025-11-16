@@ -12,7 +12,7 @@ func NewHeaders() Headers {
 	return make(map[string]string)
 }
 
-func (h *Headers) parseLine(line string) error {
+func (h Headers) parseLine(line string) error {
 	parts := strings.Fields(line)
 	if len(parts) != 2 {
 		return fmt.Errorf("line '%s' can not be parsed as header, incorrect spacing", line)
@@ -27,7 +27,12 @@ func (h *Headers) parseLine(line string) error {
 	}
 	fieldName = convertFieldNameToConanocalForm(fieldName)
 	fieldValue := parts[1]
-	(*h)[fieldName] = fieldValue
+	value, ok := h[fieldName]
+	if ok {
+		h[fieldName] = fmt.Sprintf("%s, %s", value, fieldValue)
+	} else {
+		h[fieldName] = fieldValue
+	}
 	return nil
 }
 
