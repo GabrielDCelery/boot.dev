@@ -45,6 +45,7 @@ func main() {
 			for k, v := range req.Headers {
 				fmt.Printf("- %s - %v\n", k, v)
 			}
+			fmt.Printf("%s\n", string(req.Body))
 			response := "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\n\r\nOK"
 			conn.Write([]byte(response))
 
