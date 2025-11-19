@@ -190,3 +190,53 @@ assert.False(t, done)
   - [x] Remove any extra whitespace from the key and value, but ensure there are no spaces between the colon and the key.
   - [x] Assuming the format was valid (if it isn't return an error), add the key/value pair to the Headers map and return the number of bytes consumed. Note: The Parse function should only return done=true when the data starts with a CRLF, which can't happen when it finds a new key/value pair.
   - [x] It's important to understand that this function will be called over and over until all the headers are parsed, and it can only parse one key/value pair at a time.
+
+[CH6 - L1](https://www.boot.dev/lessons/c5822072-f69e-48c2-b5a5-1cf8b5f6af30)
+
+In the request package, update your (r \*Request) parse method to parse the body in addition to the request line.
+
+- [x] Add a .Body field to the Request struct. It should be a []byte. This is where we'll store the raw body bytes.
+- [x] Create a new test function. This one will focus on parsing the body correctly. Here are my first test cases:
+
+```go
+// Test: Standard Body
+reader := &chunkReader{
+	data: "POST /submit HTTP/1.1\r\n" +
+		"Host: localhost:42069\r\n" +
+		"Content-Length: 13\r\n" +
+		"\r\n" +
+		"hello world!\n",
+	numBytesPerRead: 3,
+}
+r, err := RequestFromReader(reader)
+require.NoError(t, err)
+require.NotNil(t, r)
+assert.Equal(t, "hello world!\n", string(r.Body))
+
+// Test: Body shorter than reported content length
+reader = &chunkReader{
+	data: "POST /submit HTTP/1.1\r\n" +
+		"Host: localhost:42069\r\n" +
+		"Content-Length: 20\r\n" +
+		"\r\n" +
+		"partial content",
+	numBytesPerRead: 3,
+}
+r, err = RequestFromReader(reader)
+require.Error(t, err)
+```
+
+- [] Add some more test cases. Here are the names of some of my additional test cases:
+  - [] "Standard Body" (valid)
+  - [] "Empty Body, 0 reported content length" (valid)
+  - [] "Empty Body, no reported content length" (valid)
+  - [] "Body shorter than reported content length" (should error)
+  - [] "No Content-Length but Body Exists" (shouldn't error; we're assuming Content-Length will be present if a body exists)
+- [] Update the header parsing to move the state machine to a new "parsing body" state when it's done instead of the done state.
+- [x] Add a new .Get method to the Headers struct; it should take a key and return the value for that key, keeping case insensitivity in mind.
+- [x] Add a case for the new state in the state machine:
+  - [x] If there isn't a Content-Length header, move to the done state – nothing to parse.
+  - [x] Append all the data to the requests .Body field.
+  - [x] If the length of the body is greater than the Content-Length header, return an error.
+  - [x] If the length of the body is equal to the Content-Length header, move to the done state.
+  - [x] Report that you've consumed the entire length of the data you were given.
