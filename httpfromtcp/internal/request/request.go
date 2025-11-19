@@ -74,68 +74,84 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 
 func (r *Request) parse(data []byte) (int, error) {
 	numOfBytesParsed := 0
-Parsedata:
-	for {
+
+	for r.state != RequestStateDone {
+		var err error
+		var bytesConsumed int
+
 		switch r.state {
-		case RequestStateDone:
-			break Parsedata
-
 		case RequestStateReadingRequestLine:
-			lineEnd, hasCompleteLine := findNextCRLF(data, numOfBytesParsed)
-			if !hasCompleteLine {
-				break Parsedata
-			}
-			line := string(data[numOfBytesParsed:(lineEnd - CRLFbytes)])
-			err := r.RequestLine.ParseLine(line)
-			if err != nil {
-				return 0, err
-			}
-			r.state = RequestStateReadingHeaders
-			numOfBytesParsed = lineEnd
-
+			bytesConsumed, err = r.parseRequestLine(data, numOfBytesParsed)
 		case RequestStateReadingHeaders:
-			lineEnd, hasCompleteLine := findNextCRLF(data, numOfBytesParsed)
-			if !hasCompleteLine {
-				break Parsedata
-			}
-			line := string(data[numOfBytesParsed:(lineEnd - CRLFbytes)])
-			if len(line) == 0 {
-				numOfBytesParsed = lineEnd
-				_, ok := r.Headers.Get("Content-Length")
-				if ok {
-					r.state = RequestStateReadingBody
-				} else {
-					r.state = RequestStateDone
-				}
-			} else {
-				err := r.Headers.ParseLine(line)
-				numOfBytesParsed = lineEnd
-				if err != nil {
-					return 0, err
-				}
-			}
-
+			bytesConsumed, err = r.parseHeader(data, numOfBytesParsed)
 		case RequestStateReadingBody:
-			r.Body = append(r.Body, data[numOfBytesParsed:]...)
-			headerContentLength, _ := r.Headers.Get("Content-Length")
-			contentLength, err := strconv.Atoi(headerContentLength)
-			if err != nil {
-				return 0, fmt.Errorf("failed to parse Content-Length '%s'", headerContentLength)
-			}
-			if len(r.Body) > contentLength {
-				return 0, fmt.Errorf("received %d bytes of body when expected %d", len(r.Body), contentLength)
-			}
-			if len(r.Body) == contentLength {
-				r.state = RequestStateDone
-			}
-			numOfBytesParsed = len(data)
-			break Parsedata
+			bytesConsumed, err = r.parseBody(data, numOfBytesParsed)
+		}
 
-		default:
-			return 0, fmt.Errorf("unhandled state: %d", r.state)
+		if err != nil {
+			return 0, fmt.Errorf("failed to parse data chunk, %v", err)
+		}
+
+		numOfBytesParsed += bytesConsumed
+
+		if bytesConsumed == 0 {
+			break
 		}
 	}
+
 	return numOfBytesParsed, nil
+}
+
+func (r *Request) parseRequestLine(data []byte, start int) (int, error) {
+	lineEnd, hasCompleteLine := findNextCRLF(data, start)
+	if !hasCompleteLine {
+		return 0, nil
+	}
+	line := string(data[start:(lineEnd - CRLFbytes)])
+	err := r.RequestLine.ParseLine(line)
+	if err != nil {
+		return 0, err
+	}
+	r.state = RequestStateReadingHeaders
+	return lineEnd - start, nil
+}
+
+func (r *Request) parseHeader(data []byte, start int) (int, error) {
+	lineEnd, hasCompleteLine := findNextCRLF(data, start)
+	if !hasCompleteLine {
+		return 0, nil
+	}
+	line := string(data[start:(lineEnd - CRLFbytes)])
+	if len(line) == 0 {
+		_, ok := r.Headers.Get("Content-Length")
+		if ok {
+			r.state = RequestStateReadingBody
+		} else {
+			r.state = RequestStateDone
+		}
+		return lineEnd - start, nil
+	}
+	err := r.Headers.ParseLine(line)
+	if err != nil {
+		return 0, err
+	}
+	return lineEnd - start, nil
+}
+
+func (r *Request) parseBody(data []byte, start int) (int, error) {
+	r.Body = append(r.Body, data[start:]...)
+	headerContentLength, _ := r.Headers.Get("Content-Length")
+	contentLength, err := strconv.Atoi(headerContentLength)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse Content-Length '%s'", headerContentLength)
+	}
+	if len(r.Body) > contentLength {
+		return 0, fmt.Errorf("received %d bytes of body when expected %d", len(r.Body), contentLength)
+	}
+	if len(r.Body) == contentLength {
+		r.state = RequestStateDone
+	}
+	return len(data) - start, nil
 }
 
 func findNextCRLF(data []byte, start int) (lineEnd int, hasCompleteLine bool) {
