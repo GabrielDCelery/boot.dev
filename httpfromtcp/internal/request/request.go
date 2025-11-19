@@ -81,11 +81,11 @@ func (r *Request) parse(data []byte) (int, error) {
 
 		switch r.state {
 		case RequestStateReadingRequestLine:
-			bytesConsumed, err = r.parseRequestLine(data, numOfBytesParsed)
+			bytesConsumed, err = r.parseRequestLine(data[numOfBytesParsed:])
 		case RequestStateReadingHeaders:
-			bytesConsumed, err = r.parseHeader(data, numOfBytesParsed)
+			bytesConsumed, err = r.parseHeader(data[numOfBytesParsed:])
 		case RequestStateReadingBody:
-			bytesConsumed, err = r.parseBody(data, numOfBytesParsed)
+			bytesConsumed, err = r.parseBody(data[numOfBytesParsed:])
 		}
 
 		if err != nil {
@@ -102,26 +102,26 @@ func (r *Request) parse(data []byte) (int, error) {
 	return numOfBytesParsed, nil
 }
 
-func (r *Request) parseRequestLine(data []byte, start int) (int, error) {
-	lineEnd, hasCompleteLine := findNextCRLF(data, start)
+func (r *Request) parseRequestLine(data []byte) (int, error) {
+	lineEnd, hasCompleteLine := findNextCRLF(data, 0)
 	if !hasCompleteLine {
 		return 0, nil
 	}
-	line := string(data[start:(lineEnd - CRLFbytes)])
+	line := string(data[0:(lineEnd - CRLFbytes)])
 	err := r.RequestLine.ParseLine(line)
 	if err != nil {
 		return 0, err
 	}
 	r.state = RequestStateReadingHeaders
-	return lineEnd - start, nil
+	return lineEnd, nil
 }
 
-func (r *Request) parseHeader(data []byte, start int) (int, error) {
-	lineEnd, hasCompleteLine := findNextCRLF(data, start)
+func (r *Request) parseHeader(data []byte) (int, error) {
+	lineEnd, hasCompleteLine := findNextCRLF(data, 0)
 	if !hasCompleteLine {
 		return 0, nil
 	}
-	line := string(data[start:(lineEnd - CRLFbytes)])
+	line := string(data[0:(lineEnd - CRLFbytes)])
 	if len(line) == 0 {
 		_, ok := r.Headers.Get("Content-Length")
 		if ok {
@@ -129,17 +129,17 @@ func (r *Request) parseHeader(data []byte, start int) (int, error) {
 		} else {
 			r.state = RequestStateDone
 		}
-		return lineEnd - start, nil
+		return lineEnd, nil
 	}
 	err := r.Headers.ParseLine(line)
 	if err != nil {
 		return 0, err
 	}
-	return lineEnd - start, nil
+	return lineEnd, nil
 }
 
-func (r *Request) parseBody(data []byte, start int) (int, error) {
-	r.Body = append(r.Body, data[start:]...)
+func (r *Request) parseBody(data []byte) (int, error) {
+	r.Body = append(r.Body, data...)
 	headerContentLength, _ := r.Headers.Get("Content-Length")
 	contentLength, err := strconv.Atoi(headerContentLength)
 	if err != nil {
@@ -151,7 +151,7 @@ func (r *Request) parseBody(data []byte, start int) (int, error) {
 	if len(r.Body) == contentLength {
 		r.state = RequestStateDone
 	}
-	return len(data) - start, nil
+	return len(data), nil
 }
 
 func findNextCRLF(data []byte, start int) (lineEnd int, hasCompleteLine bool) {
