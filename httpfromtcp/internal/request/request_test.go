@@ -114,6 +114,52 @@ func TestRequestLineParse(t *testing.T) {
 		assert.Equal(t, "13", r.Headers["Content-Length"])
 		assert.Equal(t, "hello world!\n", string(r.Body))
 	})
+
+	t.Run("Good GET request with empty body 0, reported content length", func(t *testing.T) {
+		t.Parallel()
+		reader := &chunkReader{
+			data:              "POST /submit HTTP/1.1\r\n" + "Host: localhost:42069\r\n" + "Content-Length: 0\r\n" + "\r\n",
+			numOfBytesPerRead: 3,
+		}
+
+		r, err := RequestFromReader(reader)
+		require.NoError(t, err)
+		require.NotNil(t, r)
+		assert.Equal(t, "POST", r.RequestLine.Method)
+		assert.Equal(t, "/submit", r.RequestLine.RequestTarget)
+		assert.Equal(t, "1.1", r.RequestLine.HttpVersion)
+		assert.Equal(t, "localhost:42069", r.Headers["Host"])
+		assert.Equal(t, "0", r.Headers["Content-Length"])
+		assert.Equal(t, "", string(r.Body))
+	})
+
+	t.Run("Good GET request with empty body 0, no reported content length", func(t *testing.T) {
+		t.Parallel()
+		reader := &chunkReader{
+			data:              "POST /submit HTTP/1.1\r\n" + "Host: localhost:42069\r\n" + "\r\n",
+			numOfBytesPerRead: 3,
+		}
+
+		r, err := RequestFromReader(reader)
+		require.NoError(t, err)
+		require.NotNil(t, r)
+		assert.Equal(t, "POST", r.RequestLine.Method)
+		assert.Equal(t, "/submit", r.RequestLine.RequestTarget)
+		assert.Equal(t, "1.1", r.RequestLine.HttpVersion)
+		assert.Equal(t, "localhost:42069", r.Headers["Host"])
+		assert.Equal(t, "", string(r.Body))
+	})
+
+	t.Run("Body shorter than the reported content length", func(t *testing.T) {
+		t.Parallel()
+		reader := &chunkReader{
+			data:              "POST /submit HTTP/1.1\r\n" + "Host: localhost:42069\r\n" + "Content-Length: 13\r\n" + "\r\n" + "heo world!\n",
+			numOfBytesPerRead: 3,
+		}
+
+		_, err := RequestFromReader(reader)
+		require.Error(t, err)
+	})
 }
 
 type chunkReader struct {
