@@ -6,6 +6,7 @@ import (
 	"httpfromtcp/internal/headers"
 	"httpfromtcp/internal/requestline"
 	"io"
+	"strconv"
 )
 
 const bufferSize = 4096
@@ -13,6 +14,7 @@ const bufferSize = 4096
 const (
 	RequestStateReadingRequestLine = iota
 	RequestStateReadingHeaders
+	RequestStateReadingBody
 	RequestStateDone
 )
 
@@ -22,6 +24,7 @@ type Request struct {
 	state       int
 	RequestLine requestline.RequestLine
 	Headers     headers.Headers
+	Body        []byte
 }
 
 func RequestFromReader(reader io.Reader) (*Request, error) {
@@ -29,6 +32,7 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		state:       RequestStateReadingRequestLine,
 		RequestLine: requestline.NewRequestLine(),
 		Headers:     headers.NewHeaders(),
+		Body:        make([]byte, 0),
 	}
 	buffer := make([]byte, bufferSize)
 	parseTillIndex := 0
@@ -70,45 +74,68 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 
 func (r *Request) parse(data []byte) (int, error) {
 	numOfBytesParsed := 0
+Parsedata:
 	for {
-		if r.state == RequestStateDone {
-			break
+		switch r.state {
+		case RequestStateDone:
+			break Parsedata
+
+		case RequestStateReadingRequestLine:
+			lineEnd, hasCompleteLine := findNextCRLF(data, numOfBytesParsed)
+			if !hasCompleteLine {
+				break Parsedata
+			}
+			line := string(data[numOfBytesParsed:(lineEnd - CRLFbytes)])
+			err := r.RequestLine.ParseLine(line)
+			if err != nil {
+				return 0, err
+			}
+			r.state = RequestStateReadingHeaders
+			numOfBytesParsed = lineEnd
+
+		case RequestStateReadingHeaders:
+			lineEnd, hasCompleteLine := findNextCRLF(data, numOfBytesParsed)
+			if !hasCompleteLine {
+				break Parsedata
+			}
+			line := string(data[numOfBytesParsed:(lineEnd - CRLFbytes)])
+			if len(line) == 0 {
+				numOfBytesParsed = lineEnd
+				_, ok := r.Headers.Get("Content-Length")
+				if ok {
+					r.state = RequestStateReadingBody
+				} else {
+					r.state = RequestStateDone
+				}
+			} else {
+				err := r.Headers.ParseLine(line)
+				numOfBytesParsed = lineEnd
+				if err != nil {
+					return 0, err
+				}
+			}
+
+		case RequestStateReadingBody:
+			r.Body = append(r.Body, data[numOfBytesParsed:]...)
+			headerContentLength, _ := r.Headers.Get("Content-Length")
+			contentLength, err := strconv.Atoi(headerContentLength)
+			if err != nil {
+				return 0, fmt.Errorf("failed to parse Content-Length '%s'", headerContentLength)
+			}
+			if len(r.Body) > contentLength {
+				return 0, fmt.Errorf("received %d bytes of body when expected %d", len(r.Body), contentLength)
+			}
+			if len(r.Body) == contentLength {
+				r.state = RequestStateDone
+			}
+			numOfBytesParsed = len(data)
+			break Parsedata
+
+		default:
+			return 0, fmt.Errorf("unhandled state: %d", r.state)
 		}
-		lineEnd, hasCompleteLine := findNextCRLF(data, numOfBytesParsed)
-		if !hasCompleteLine {
-			return numOfBytesParsed, nil
-		}
-		line := string(data[numOfBytesParsed:(lineEnd - CRLFbytes)])
-		err := r.parseLine(line)
-		if err != nil {
-			return 0, err
-		}
-		numOfBytesParsed = lineEnd
 	}
 	return numOfBytesParsed, nil
-}
-
-func (r *Request) parseLine(line string) error {
-	if r.state == RequestStateReadingRequestLine {
-		err := r.RequestLine.ParseLine(line)
-		if err != nil {
-			return err
-		}
-		r.state = RequestStateReadingHeaders
-		return nil
-	}
-	if r.state == RequestStateReadingHeaders {
-		if len(line) == 0 {
-			r.state = RequestStateDone
-			return nil
-		}
-		err := r.Headers.ParseLine(line)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-	return fmt.Errorf("unhandled state")
 }
 
 func findNextCRLF(data []byte, start int) (lineEnd int, hasCompleteLine bool) {

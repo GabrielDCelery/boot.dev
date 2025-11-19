@@ -36,6 +36,11 @@ func (h Headers) ParseLine(line string) error {
 	return nil
 }
 
+func (h Headers) Get(key string) (val string, ok bool) {
+	value, ok := h[key]
+	return value, ok
+}
+
 func validateFieldName(fieldName string) error {
 	pattern := `^[a-zA-Z0-9\!\#\$\%\&\'\*\+\-\.\^\_\|\~]+$`
 	matched, err := regexp.Match(pattern, []byte(fieldName))
