@@ -138,13 +138,12 @@ func (r *Request) parseBody(data []byte, isLastChunk bool) (int, error) {
 	if isLastChunk {
 		r.state = RequestStateDone
 	}
-	headerContentLength, ok := r.Headers.Get("Content-Length")
-	if !ok {
-		return len(data), nil
-	}
-	contentLength, err := strconv.Atoi(headerContentLength)
+	contentLength, err := r.getContentLength()
 	if err != nil {
-		return 0, fmt.Errorf("failed to parse Content-Length '%s'", headerContentLength)
+		return 0, fmt.Errorf("failed to get Content-Length '%d'", contentLength)
+	}
+	if contentLength == 0 {
+		return len(data), nil
 	}
 	if isLastChunk && len(r.Body) != contentLength {
 		return 0, fmt.Errorf("received %d bytes of body when expected %d", len(r.Body), contentLength)
@@ -153,6 +152,18 @@ func (r *Request) parseBody(data []byte, isLastChunk bool) (int, error) {
 		r.state = RequestStateDone
 	}
 	return len(data), nil
+}
+
+func (r *Request) getContentLength() (int, error) {
+	headerContentLength, ok := r.Headers.Get("Content-Length")
+	if !ok {
+		return 0, nil
+	}
+	contentLength, err := strconv.Atoi(headerContentLength)
+	if err != nil {
+		return 0, err
+	}
+	return contentLength, nil
 }
 
 func findNextCRLF(data []byte, start int) (lineEnd int, hasCompleteLine bool) {
