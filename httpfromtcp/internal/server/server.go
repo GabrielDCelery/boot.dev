@@ -50,8 +50,10 @@ func (s *Server) listen() {
 			case <-s.quitChan:
 				// shutdown requested, exit gracefully
 				return
+			case s.errChan <- err:
+				continue
 			default:
-				s.errChan <- fmt.Errorf("failed to accept connection: %v", err)
+				fmt.Printf("dropping error, %v", err)
 				continue
 			}
 		}
