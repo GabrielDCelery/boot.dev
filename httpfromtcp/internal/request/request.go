@@ -35,20 +35,20 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		Body:        make([]byte, 0),
 	}
 	buffer := make([]byte, bufferSize)
-	parseTillIndex := 0
+	validBytesInBuffer := 0
 
 	for request.state != RequestStateDone {
-		numOfBytesRead, errRead := reader.Read(buffer[parseTillIndex:])
+		numOfBytesRead, errRead := reader.Read(buffer[validBytesInBuffer:])
 
-		parseTillIndex += numOfBytesRead
+		validBytesInBuffer += numOfBytesRead
 
-		if parseTillIndex > bufferSize-1 {
+		if validBytesInBuffer > bufferSize-1 {
 			return &Request{}, fmt.Errorf("failed to process request: exceeded buffer size of %d", bufferSize)
 		}
 
 		isLastChunk := errRead == io.EOF
 
-		numOfBytesParsed, errParse := request.parse(buffer[:parseTillIndex], isLastChunk)
+		numOfBytesParsed, errParse := request.parse(buffer[:validBytesInBuffer], isLastChunk)
 
 		if errParse != nil {
 			return &Request{}, fmt.Errorf("failed to process request: %v", errParse)
@@ -59,8 +59,8 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		}
 
 		if numOfBytesParsed > 0 {
-			copy(buffer, buffer[numOfBytesParsed:parseTillIndex])
-			parseTillIndex -= numOfBytesParsed
+			copy(buffer, buffer[numOfBytesParsed:validBytesInBuffer])
+			validBytesInBuffer -= numOfBytesParsed
 		}
 	}
 
