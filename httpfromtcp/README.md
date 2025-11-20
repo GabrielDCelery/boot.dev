@@ -226,12 +226,12 @@ r, err = RequestFromReader(reader)
 require.Error(t, err)
 ```
 
-- [] Add some more test cases. Here are the names of some of my additional test cases:
+- [x] Add some more test cases. Here are the names of some of my additional test cases:
   - [x] "Standard Body" (valid)
   - [x] "Empty Body, 0 reported content length" (valid)
   - [x] "Empty Body, no reported content length" (valid)
   - [x] "Body shorter than reported content length" (should error)
-  - [] "No Content-Length but Body Exists" (shouldn't error; we're assuming Content-Length will be present if a body exists)
+  - [x] "No Content-Length but Body Exists" (shouldn't error; we're assuming Content-Length will be present if a body exists)
 - [] Update the header parsing to move the state machine to a new "parsing body" state when it's done instead of the done state.
 - [x] Add a new .Get method to the Headers struct; it should take a key and return the value for that key, keeping case insensitivity in mind.
 - [x] Add a case for the new state in the state machine:

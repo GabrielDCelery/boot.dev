@@ -46,16 +46,15 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 			return &Request{}, fmt.Errorf("failed to process request: exceeded buffer size of %d", bufferSize)
 		}
 
-		numOfBytesParsed, errParse := request.parse(buffer[:parseTillIndex])
+		isLastChunk := errRead == io.EOF
+
+		numOfBytesParsed, errParse := request.parse(buffer[:parseTillIndex], isLastChunk)
 
 		if errParse != nil {
 			return &Request{}, fmt.Errorf("failed to process request: %v", errParse)
 		}
 
-		if errRead != nil {
-			if errRead == io.EOF {
-				break
-			}
+		if errRead != nil && errRead != io.EOF {
 			return &Request{}, fmt.Errorf("failed to process request: %v", errRead)
 		}
 
@@ -72,7 +71,7 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 	return request, nil
 }
 
-func (r *Request) parse(data []byte) (int, error) {
+func (r *Request) parse(data []byte, isLastChunk bool) (int, error) {
 	numOfBytesParsed := 0
 
 	for r.state != RequestStateDone {
@@ -85,7 +84,7 @@ func (r *Request) parse(data []byte) (int, error) {
 		case RequestStateReadingHeaders:
 			bytesConsumed, err = r.parseHeader(data[numOfBytesParsed:])
 		case RequestStateReadingBody:
-			bytesConsumed, err = r.parseBody(data[numOfBytesParsed:])
+			bytesConsumed, err = r.parseBody(data[numOfBytesParsed:], isLastChunk)
 		}
 
 		if err != nil {
@@ -122,13 +121,9 @@ func (r *Request) parseHeader(data []byte) (int, error) {
 		return 0, nil
 	}
 	line := string(data[0:(lineEnd - CRLFbytes)])
+	// if length is 0 then we are reading the \r\n empty line which is the indicator of end of header
 	if len(line) == 0 {
-		_, ok := r.Headers.Get("Content-Length")
-		if ok {
-			r.state = RequestStateReadingBody
-		} else {
-			r.state = RequestStateDone
-		}
+		r.state = RequestStateReadingBody
 		return lineEnd, nil
 	}
 	err := r.Headers.ParseLine(line)
@@ -138,18 +133,21 @@ func (r *Request) parseHeader(data []byte) (int, error) {
 	return lineEnd, nil
 }
 
-func (r *Request) parseBody(data []byte) (int, error) {
+func (r *Request) parseBody(data []byte, isLastChunk bool) (int, error) {
 	r.Body = append(r.Body, data...)
-	headerContentLength, _ := r.Headers.Get("Content-Length")
+	if isLastChunk {
+		r.state = RequestStateDone
+	}
+	headerContentLength, ok := r.Headers.Get("Content-Length")
+	if !ok {
+		return len(data), nil
+	}
 	contentLength, err := strconv.Atoi(headerContentLength)
 	if err != nil {
 		return 0, fmt.Errorf("failed to parse Content-Length '%s'", headerContentLength)
 	}
-	if len(r.Body) > contentLength {
+	if isLastChunk && len(r.Body) != contentLength {
 		return 0, fmt.Errorf("received %d bytes of body when expected %d", len(r.Body), contentLength)
-	}
-	if len(r.Body) == contentLength {
-		r.state = RequestStateDone
 	}
 	return len(data), nil
 }
