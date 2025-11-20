@@ -149,6 +149,9 @@ func (r *Request) parseBody(data []byte, isLastChunk bool) (int, error) {
 	if isLastChunk && len(r.Body) != contentLength {
 		return 0, fmt.Errorf("received %d bytes of body when expected %d", len(r.Body), contentLength)
 	}
+	if len(r.Body) == contentLength {
+		r.state = RequestStateDone
+	}
 	return len(data), nil
 }
 
